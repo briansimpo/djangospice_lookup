@@ -1088,6 +1088,6 @@ For large or frequently changing datasets, `LookupWidget` provides a more scalab
 
 # License
 
-djangospice-lookup is licensed under the **MIT License**.
+This package is licensed under the **MIT License**.
 
 See [LICENSE](LICENSE) for the full license text.
