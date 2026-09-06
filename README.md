@@ -515,9 +515,7 @@ class BookForm(forms.Form):
         queryset=Book.objects.all(),
         widget=LookupWidget(
             model=Book,
-            depends_on={
-                "author": "author",
-            },
+            depends_on=("author"),
         ),
     )
 ```
@@ -557,9 +555,7 @@ class BookFilter(django_filters.FilterSet):
         queryset=Book.objects.all(),
         widget=LookupWidget(
             model=Book,
-            depends_on={
-                "author": "author",
-            },
+            depends_on=("author"),
         ),
     )
 
@@ -588,9 +584,9 @@ Author → Book
 Dependencies can reference related fields using normal Django ORM relationship paths:
 
 ```python
-depends_on={
-    "account": "account__user",
-}
+depends_on=(
+    "account__user",
+)
 ```
 
 This allows dependencies to resolve through related objects.
