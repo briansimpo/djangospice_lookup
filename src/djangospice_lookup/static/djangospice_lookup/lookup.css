@@ -1,0 +1,483 @@
+.djangospice-lookup {
+    --djangospice-lookup-border-color: #ced4da;
+    --djangospice-lookup-border-focus: #86b7fe;
+    --djangospice-lookup-background: #fff;
+    --djangospice-lookup-text: #212529;
+    --djangospice-lookup-muted: #6c757d;
+    --djangospice-lookup-placeholder: #6c757d;
+    --djangospice-lookup-hover: #f8f9fa;
+    --djangospice-lookup-selected: #e9ecef;
+    --djangospice-lookup-highlight: #f1f3f5;
+    --djangospice-lookup-chip-background: #e9ecef;
+    --djangospice-lookup-chip-text: #212529;
+    --djangospice-lookup-danger: #dc3545;
+    --djangospice-lookup-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.12);
+
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+
+/* ==================================================================
+   Native Django select
+   ================================================================== */
+
+.djangospice-lookup__native {
+    /*
+     * The native select remains the authoritative Django form
+     * control, but the enhanced interface handles interaction.
+     */
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+
+/* ==================================================================
+   Search input
+   ================================================================== */
+
+.djangospice-lookup__input {
+    display: block;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+
+    box-sizing: border-box;
+
+    border: 1px solid
+        var(--djangospice-lookup-border-color);
+
+    border-radius: 0.375rem;
+
+    background: var(
+        --djangospice-lookup-background
+    );
+
+    color: var(
+        --djangospice-lookup-text
+    );
+
+    font: inherit;
+    line-height: 1.5;
+
+    outline: none;
+
+    transition:
+        border-color 0.15s ease-in-out,
+        box-shadow 0.15s ease-in-out;
+}
+
+
+.djangospice-lookup__input::placeholder {
+    color: var(
+        --djangospice-lookup-placeholder
+    );
+
+    opacity: 1;
+}
+
+
+.djangospice-lookup__input:focus {
+    border-color: var(
+        --djangospice-lookup-border-focus
+    );
+
+    box-shadow:
+        0 0 0 0.2rem
+        rgba(13, 110, 253, 0.15);
+}
+
+
+.djangospice-lookup.is-open
+.djangospice-lookup__input {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+
+/* ==================================================================
+   Clear button
+   ================================================================== */
+
+.djangospice-lookup__clear {
+    position: absolute;
+
+    top: 50%;
+    right: 0.625rem;
+
+    width: 1.5rem;
+    height: 1.5rem;
+
+    padding: 0;
+
+    transform: translateY(-50%);
+
+    border: 0;
+
+    background: transparent;
+
+    color:
+        var(--djangospice-lookup-muted);
+
+    font-size: 1.25rem;
+    line-height: 1;
+
+    cursor: pointer;
+
+    z-index: 2;
+}
+
+
+.djangospice-lookup__clear:hover {
+    color:
+        var(--djangospice-lookup-text);
+}
+
+
+.djangospice-lookup__clear:focus-visible {
+    outline: 2px solid
+        var(--djangospice-lookup-border-focus);
+
+    outline-offset: 2px;
+
+    border-radius: 0.25rem;
+}
+
+
+/* ==================================================================
+   Dropdown
+   ================================================================== */
+
+.djangospice-lookup__dropdown {
+    position: absolute;
+
+    top: 100%;
+    left: 0;
+    right: 0;
+
+    z-index: 1000;
+
+    display: none;
+
+    max-height: 18rem;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    box-sizing: border-box;
+
+    border: 1px solid
+        var(--djangospice-lookup-border-color);
+
+    border-top: 0;
+
+    border-bottom-left-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+
+    background:
+        var(--djangospice-lookup-background);
+
+    color:
+        var(--djangospice-lookup-text);
+
+    box-shadow:
+        var(--djangospice-lookup-shadow);
+
+    overscroll-behavior: contain;
+}
+
+
+.djangospice-lookup.is-open
+.djangospice-lookup__dropdown {
+    display: block;
+}
+
+
+/* ==================================================================
+   Options
+   ================================================================== */
+
+.djangospice-lookup__option {
+    display: block;
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 0.5rem 0.75rem;
+
+    color:
+        var(--djangospice-lookup-text);
+
+    background: transparent;
+
+    cursor: pointer;
+
+    user-select: none;
+
+    line-height: 1.5;
+}
+
+
+.djangospice-lookup__option:hover {
+    background:
+        var(--djangospice-lookup-hover);
+}
+
+
+.djangospice-lookup__option.is-highlighted {
+    background:
+        var(--djangospice-lookup-highlight);
+}
+
+
+.djangospice-lookup__option.is-selected {
+    background:
+        var(--djangospice-lookup-selected);
+
+    font-weight: 500;
+}
+
+
+.djangospice-lookup__option.is-selected::before {
+    content: "✓";
+
+    display: inline-block;
+
+    width: 1.25rem;
+
+    margin-right: 0.25rem;
+}
+
+
+.djangospice-lookup__option.is-highlighted.is-selected {
+    background:
+        var(--djangospice-lookup-selected);
+}
+
+
+/* ==================================================================
+   Multiple selection
+   ================================================================== */
+
+.djangospice-lookup__selection {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 0.375rem;
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    margin-bottom: 0.375rem;
+}
+
+
+.djangospice-lookup__chip {
+    display: inline-flex;
+
+    align-items: center;
+
+    max-width: 100%;
+
+    padding:
+        0.25rem
+        0.375rem
+        0.25rem
+        0.625rem;
+
+    border-radius: 999px;
+
+    background:
+        var(--djangospice-lookup-chip-background);
+
+    color:
+        var(--djangospice-lookup-chip-text);
+
+    font-size: 0.875rem;
+
+    line-height: 1.25;
+
+    box-sizing: border-box;
+}
+
+
+.djangospice-lookup__chip-label {
+    min-width: 0;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+
+.djangospice-lookup__chip-remove {
+    flex: 0 0 auto;
+
+    width: 1.25rem;
+    height: 1.25rem;
+
+    margin-left: 0.25rem;
+
+    padding: 0;
+
+    border: 0;
+
+    border-radius: 50%;
+
+    background: transparent;
+
+    color:
+        var(--djangospice-lookup-muted);
+
+    font-size: 1rem;
+
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+
+.djangospice-lookup__chip-remove:hover {
+    color:
+        var(--djangospice-lookup-danger);
+}
+
+
+.djangospice-lookup__chip-remove:focus-visible {
+    outline: 2px solid
+        var(--djangospice-lookup-border-focus);
+
+    outline-offset: 1px;
+}
+
+
+/* ==================================================================
+   Loading state
+   ================================================================== */
+
+.djangospice-lookup.is-loading
+.djangospice-lookup__input {
+    cursor: progress;
+}
+
+
+.djangospice-lookup.is-loading
+.djangospice-lookup__dropdown {
+    cursor: progress;
+}
+
+
+.djangospice-lookup__status {
+    padding: 0.5rem 0.75rem;
+
+    color:
+        var(--djangospice-lookup-muted);
+
+    font-size: 0.875rem;
+
+    line-height: 1.5;
+}
+
+
+.djangospice-lookup.is-loading
+.djangospice-lookup__status {
+    display: block;
+}
+
+
+/* ==================================================================
+   Error state
+   ================================================================== */
+
+.djangospice-lookup.has-error
+.djangospice-lookup__input {
+    border-color:
+        var(--djangospice-lookup-danger);
+}
+
+
+.djangospice-lookup.has-error
+.djangospice-lookup__input:focus {
+    box-shadow:
+        0 0 0 0.2rem
+        rgba(220, 53, 69, 0.15);
+}
+
+
+/* ==================================================================
+   Disabled state
+   ================================================================== */
+
+.djangospice-lookup__input:disabled,
+.djangospice-lookup.is-disabled
+.djangospice-lookup__input {
+    cursor: not-allowed;
+
+    opacity: 0.65;
+
+    background:
+        var(--djangospice-lookup-hover);
+}
+
+
+.djangospice-lookup.is-disabled
+.djangospice-lookup__dropdown {
+    display: none;
+}
+
+
+/* ==================================================================
+   Keyboard accessibility
+   ================================================================== */
+
+.djangospice-lookup__option:focus-visible {
+    outline: 2px solid
+        var(--djangospice-lookup-border-focus);
+
+    outline-offset: -2px;
+}
+
+
+/* ==================================================================
+   Reduced motion
+   ================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .djangospice-lookup__input {
+        transition: none;
+    }
+}
+
+
+/* ==================================================================
+   Dark theme hook
+   ================================================================== */
+
+@media (prefers-color-scheme: dark) {
+    .djangospice-lookup {
+        --djangospice-lookup-background: #212529;
+        --djangospice-lookup-text: #f8f9fa;
+        --djangospice-lookup-muted: #adb5bd;
+        --djangospice-lookup-placeholder: #adb5bd;
+        --djangospice-lookup-hover: #343a40;
+        --djangospice-lookup-selected: #495057;
+        --djangospice-lookup-highlight: #343a40;
+        --djangospice-lookup-chip-background: #495057;
+        --djangospice-lookup-chip-text: #f8f9fa;
+        --djangospice-lookup-border-color: #495057;
+    }
+}
