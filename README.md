@@ -36,15 +36,10 @@ It supports server-side search, pagination, filtering, dependent lookups, multip
 
 ## Requirements
 
-* Python
-* Django
-* `django-filter` when using lookup widgets with Django FilterSets
-
-Install `django-filter` separately if your project uses it:
-
-```bash
-pip install django-filter
-```
+* Python 3.12+
+* Django 5.0+
+* `django-filter` when using `LookupWidget` with `django-filter`
+* `PyJWT` for JWT authentication
 
 ---
 
@@ -56,7 +51,7 @@ Install the package:
 pip install djangospice-lookup
 ```
 
-Add it to your Django project:
+Add it to `INSTALLED_APPS`:
 
 ```python
 INSTALLED_APPS = [
@@ -65,7 +60,13 @@ INSTALLED_APPS = [
 ]
 ```
 
-If you use `django-filter`:
+If the project uses `django-filter`:
+
+```bash
+pip install django-filter
+```
+
+and add it to `INSTALLED_APPS`:
 
 ```python
 INSTALLED_APPS = [
@@ -74,6 +75,138 @@ INSTALLED_APPS = [
     "djangospice_lookup",
 ]
 ```
+
+---
+
+# Configuration
+
+`djangospice_lookup` uses Django settings for package-wide configuration.
+
+All package settings use the `DJANGOSPICE_LOOKUP_` prefix.
+
+## Search
+
+Configure the search parameter:
+
+```python
+DJANGOSPICE_LOOKUP_SEARCH_PARAM = "q"
+```
+
+The default is:
+
+```text
+q
+```
+
+For example:
+
+```text
+/lookup/library/book/?q=django
+```
+
+---
+
+## Pagination
+
+Configure pagination parameters and limits:
+
+```python
+DJANGOSPICE_LOOKUP_PAGE_PARAM = "page"
+
+DJANGOSPICE_LOOKUP_PAGE_SIZE_PARAM = "page_size"
+
+DJANGOSPICE_LOOKUP_PAGE = 1
+
+DJANGOSPICE_LOOKUP_PAGE_SIZE = 20
+
+DJANGOSPICE_LOOKUP_MAX_PAGE_SIZE = 100
+```
+
+These settings control:
+
+* default page number
+* page query parameter
+* page-size query parameter
+* default page size
+* maximum page size
+
+---
+
+## Authentication Requirement
+
+Authentication is required by default:
+
+```python
+DJANGOSPICE_LOOKUP_REQUIRE_AUTHENTICATION = True
+```
+
+For intentionally public lookup data:
+
+```python
+DJANGOSPICE_LOOKUP_REQUIRE_AUTHENTICATION = False
+```
+
+Only disable authentication when the lookup data is intentionally accessible without authentication.
+
+---
+
+## JWT Authentication
+
+The default JWT secret can use Django's `SECRET_KEY`:
+
+```python
+DJANGOSPICE_LOOKUP_JWT_SECRET_KEY = SECRET_KEY
+```
+
+Configure the permitted algorithms:
+
+```python
+DJANGOSPICE_LOOKUP_JWT_ALGORITHMS = (
+    "HS256",
+)
+```
+
+The default user claim is:
+
+```python
+DJANGOSPICE_LOOKUP_JWT_USER_CLAIM = "user_id"
+```
+
+A custom user resolver can be configured using a dotted Python path:
+
+```python
+DJANGOSPICE_LOOKUP_JWT_USER_RESOLVER = (
+    "myproject.authentication.resolve_user"
+)
+```
+
+---
+
+## Widget Capability Tokens
+
+Configure the capability-token header:
+
+```python
+DJANGOSPICE_LOOKUP_WIDGET_TOKEN_HEADER = (
+    "X-Lookup-Token"
+)
+```
+
+Configure the signing salt:
+
+```python
+DJANGOSPICE_LOOKUP_WIDGET_TOKEN_SALT = (
+    "djangospice_lookup.widget"
+)
+```
+
+Configure the token lifetime in seconds:
+
+```python
+DJANGOSPICE_LOOKUP_WIDGET_TOKEN_MAX_AGE = 300
+```
+
+The default lifetime is five minutes.
 
 ---
 
@@ -90,7 +223,7 @@ urlpatterns = [
 ]
 ```
 
-This provides the canonical lookup endpoint:
+The package provides the canonical lookup endpoint:
 
 ```text
 /lookup/<app_name>/<name>/
@@ -102,7 +235,53 @@ For example:
 /lookup/library/book/
 ```
 
-The URL identifies a registered lookup using the model's Django application label and model name.
+The URL identifies a registered lookup using the Django application label and model name.
+
+---
+
+# Middleware
+
+Add `LookupMiddleware` to your project's `MIDDLEWARE`:
+
+```python
+MIDDLEWARE = [
+    # ...
+    "djangospice_lookup.middleware.LookupMiddleware",
+]
+```
+
+When using Django session authentication, place it after Django's `AuthenticationMiddleware`:
+
+```python
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+
+    "djangospice_lookup.middleware.LookupMiddleware",
+
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+```
+
+`LookupMiddleware` works alongside Django authentication. It does not replace:
+
+```python
+"django.contrib.auth.middleware.AuthenticationMiddleware",
+```
+
+Django authentication remains responsible for establishing:
+
+```python
+request.user
+```
+
+The lookup system can then use the authenticated request when applying lookup security and access rules.
+
+For JWT and widget capability authentication, lookup security can authenticate the request independently of the Django session.
 
 ---
 
@@ -110,29 +289,9 @@ The URL identifies a registered lookup using the model's Django application labe
 
 Lookups are explicitly registered.
 
-This allows an application to decide which models are available through the lookup endpoint.
+This controls which models are exposed through lookup endpoints.
 
 For example:
-
-```python
-from djangospice_lookup.registry import register_lookup
-
-from .models import Book
-
-
-register_lookup(Book)
-```
-
-A lookup registration can be kept in the application's `lookup.py`:
-
-```text
-library/
-├── models.py
-├── lookup.py
-└── apps.py
-```
-
-A typical `lookup.py` might contain:
 
 ```python
 from djangospice_lookup.registry import register_lookup
@@ -144,13 +303,22 @@ register_lookup(Author)
 register_lookup(Book)
 ```
 
-Only models explicitly registered as lookups are exposed.
+A typical application can keep registrations in `lookup.py`:
+
+```text
+library/
+├── models.py
+├── lookup.py
+└── apps.py
+```
+
+Only explicitly registered models are exposed as lookups.
 
 ---
 
 # Lookup Configuration
 
-A lookup can be configured when it is registered.
+A lookup can optionally be configured when it is registered.
 
 For example:
 
@@ -161,18 +329,9 @@ register_lookup(
 )
 ```
 
-The `scope` defines the relationship used to restrict lookup results to objects accessible to the authenticated user.
+The `scope` identifies the relationship used to restrict results according to the authenticated user.
 
-Relationship paths can use normal Django ORM lookup syntax:
-
-```python
-register_lookup(
-    Book,
-    scope="account",
-)
-```
-
-or:
+Django ORM relationship paths can be used:
 
 ```python
 register_lookup(
@@ -181,13 +340,13 @@ register_lookup(
 )
 ```
 
-The exact options available depend on the package version.
+This allows access restrictions to follow related objects.
 
 ---
 
 # LookupWidget
 
-The main form integration is `LookupWidget`.
+The primary form integration is `LookupWidget`.
 
 Import it with:
 
@@ -216,13 +375,13 @@ class BookForm(forms.Form):
     )
 ```
 
-The widget provides a searchable remote lookup instead of requiring every object to be rendered into the initial HTML.
+The widget provides a searchable remote lookup without requiring the entire queryset to be rendered into the initial HTML.
 
 ---
 
-# ModelMultipleChoiceField
+## ModelMultipleChoiceField
 
-For multiple selections, use `ModelMultipleChoiceField`:
+For multiple selections:
 
 ```python
 class BookForm(forms.Form):
@@ -234,17 +393,13 @@ class BookForm(forms.Form):
     )
 ```
 
-The widget respects the field's native multiple-selection behavior.
-
-Selected objects are retained as normal Django form values.
+The widget respects Django's native multiple-selection behavior.
 
 ---
 
-# Using `LookupWidget` with django-filter
+# Using LookupWidget with django-filter
 
-`LookupWidget` integrates directly with `django-filter`.
-
-The widget is supplied to the filter field in the same way that any Django form widget would be supplied.
+`LookupWidget` can be used directly as the widget for a `django-filter` field.
 
 For example:
 
@@ -271,7 +426,7 @@ class BookFilter(django_filters.FilterSet):
         )
 ```
 
-The filter form can then be rendered normally:
+Render the filter normally:
 
 ```django
 <form method="get">
@@ -283,15 +438,15 @@ The filter form can then be rendered normally:
 </form>
 ```
 
-The `author` filter is therefore backed by `LookupWidget` rather than a conventional select containing every author.
+The `author` filter now uses `LookupWidget` instead of a conventional select containing every author.
 
-This is especially useful when the filter queryset contains thousands or millions of records.
+This is especially useful when the filter queryset contains a large number of records.
 
 ---
 
-# Multiple django-filter Lookup Fields
+## Multiple Lookup Filters
 
-Multiple filter fields can use `LookupWidget`.
+Multiple filters can use `LookupWidget`:
 
 ```python
 class BookFilter(django_filters.FilterSet):
@@ -317,13 +472,11 @@ class BookFilter(django_filters.FilterSet):
         )
 ```
 
-Each lookup field operates independently while following the same lookup configuration and endpoint conventions.
-
 ---
 
-# Multiple Selection with django-filter
+## Multiple Selection with django-filter
 
-`LookupWidget` can also be used with `ModelMultipleChoiceFilter`.
+Use `ModelMultipleChoiceFilter` for multiple selections:
 
 ```python
 class BookFilter(django_filters.FilterSet):
@@ -341,15 +494,13 @@ class BookFilter(django_filters.FilterSet):
         )
 ```
 
-This allows users to select multiple related objects without rendering the entire queryset as a large HTML select.
-
 ---
 
 # Dependent Lookups
 
-Lookup fields can depend on other form fields.
+A lookup can depend on another form field.
 
-For example, suppose a book belongs to an author.
+For example:
 
 ```python
 class BookForm(forms.Form):
@@ -371,7 +522,7 @@ class BookForm(forms.Form):
     )
 ```
 
-The book lookup can use the selected author when requesting its results.
+The book lookup can then use the selected author when requesting results.
 
 Conceptually:
 
@@ -381,7 +532,7 @@ Author
 Book
 ```
 
-When the user selects an author, the book lookup can request:
+A request may look like:
 
 ```text
 /lookup/library/book/?author=12
@@ -389,9 +540,9 @@ When the user selects an author, the book lookup can request:
 
 ---
 
-# Dependent django-filter Fields
+## Dependent django-filter Fields
 
-The same approach can be used in a `FilterSet`.
+Dependencies can also be used in a `FilterSet`:
 
 ```python
 class BookFilter(django_filters.FilterSet):
@@ -420,7 +571,7 @@ class BookFilter(django_filters.FilterSet):
         )
 ```
 
-This is useful for common cascading filter relationships such as:
+This supports cascading relationships such as:
 
 ```text
 Country → City
@@ -432,11 +583,9 @@ Author → Book
 
 ---
 
-# Relationship Paths
+## Relationship Paths
 
-Dependencies can reference related fields using Django ORM relationship paths.
-
-For example:
+Dependencies can reference related fields using normal Django ORM relationship paths:
 
 ```python
 depends_on={
@@ -444,7 +593,7 @@ depends_on={
 }
 ```
 
-This allows the dependency to resolve through related objects rather than requiring a direct field relationship.
+This allows dependencies to resolve through related objects.
 
 ---
 
@@ -458,21 +607,19 @@ For example:
 /lookup/library/book/?q=django
 ```
 
-The default search parameter is:
+Search is performed by the lookup endpoint, allowing the browser to request only the records required for the current query.
 
-```text
-q
+The search parameter is configurable through:
+
+```python
+DJANGOSPICE_LOOKUP_SEARCH_PARAM = "q"
 ```
-
-The parameter name can be configured.
-
-Search is performed against the lookup endpoint, allowing the browser to request only the records needed for the current query.
 
 ---
 
 # Filtering
 
-Lookup requests can include filter parameters.
+Lookup requests can contain filter values.
 
 For example:
 
@@ -486,7 +633,7 @@ Search and filtering can be combined:
 /lookup/library/book/?q=django&author=12
 ```
 
-When `LookupWidget` is used with `django-filter`, the filter form remains responsible for the filter semantics while the widget provides efficient remote selection of filter values.
+When `LookupWidget` is used with `django-filter`, the filter form remains responsible for filter semantics while the widget provides efficient remote selection of filter values.
 
 ---
 
@@ -508,7 +655,11 @@ A page size can also be supplied:
 
 Pagination prevents large querysets from being transferred to the browser in a single request.
 
-The maximum permitted page size can be configured.
+The maximum page size is controlled by:
+
+```python
+DJANGOSPICE_LOOKUP_MAX_PAGE_SIZE = 100
+```
 
 ---
 
@@ -529,13 +680,13 @@ class BookForm(forms.Form):
     )
 ```
 
-Existing selections can therefore be rendered normally when editing an object.
+This makes the widget suitable for both create and edit forms.
 
 ---
 
 # Django Form Validation
 
-The widget does not replace Django's field validation.
+`LookupWidget` does not replace Django field validation.
 
 For example:
 
@@ -551,7 +702,7 @@ class BookForm(forms.Form):
 
 Django continues to validate the submitted value against the field's queryset.
 
-The lookup widget is responsible for helping users select values; the Django form field remains responsible for validation.
+The widget helps the user select an object; the Django form field remains responsible for validating the submitted value.
 
 ---
 
@@ -570,15 +721,13 @@ register_lookup(
 
 A scoped lookup only returns objects satisfying the configured relationship.
 
-This is useful in multi-user applications where users should only be able to select objects belonging to their permitted account or organization.
+This is useful when users should only be able to select objects belonging to their permitted account or organization.
 
-The lookup therefore should not be treated as a mechanism for bypassing the application's normal authorization rules.
+The lookup endpoint should not be used to bypass the application's authorization rules.
 
 ---
 
 # Authentication
-
-Lookup requests can use the configured authentication mechanisms.
 
 The default security configuration supports:
 
@@ -588,7 +737,7 @@ The default security configuration supports:
 
 ## Django Session Authentication
 
-Authenticated Django users can access lookup endpoints using the normal Django session.
+Authenticated Django users can access lookup endpoints using their normal Django session.
 
 No special authentication code is required in the widget.
 
@@ -596,7 +745,7 @@ No special authentication code is required in the widget.
 
 ## JWT Authentication
 
-API clients can authenticate using a bearer token:
+API clients can authenticate using:
 
 ```http
 Authorization: Bearer <token>
@@ -614,139 +763,7 @@ A widget can use a short-lived capability token:
 X-Lookup-Token: <token>
 ```
 
-Capability tokens are intended for short-lived lookup access and are associated with the lookup they authorize.
-
----
-
-# Configuration
-
-Package configuration is controlled through Django settings.
-
-All package settings use the:
-
-```text
-DJANGOSPICE_LOOKUP_
-```
-
-prefix.
-
-## Search Parameters
-
-```python
-DJANGOSPICE_LOOKUP_SEARCH_PARAM = "q"
-```
-
-Controls the query-string parameter used for text search.
-
-Default:
-
-```text
-q
-```
-
----
-
-## Pagination Parameters
-
-```python
-DJANGOSPICE_LOOKUP_PAGE_PARAM = "page"
-
-DJANGOSPICE_LOOKUP_PAGE_SIZE_PARAM = "page_size"
-
-DJANGOSPICE_LOOKUP_PAGE = 1
-
-DJANGOSPICE_LOOKUP_PAGE_SIZE = 20
-
-DJANGOSPICE_LOOKUP_MAX_PAGE_SIZE = 100
-```
-
-These control:
-
-* default page number
-* page parameter
-* page-size parameter
-* default page size
-* maximum page size
-
----
-
-## JWT Configuration
-
-The default JWT secret can use Django's `SECRET_KEY`:
-
-```python
-DJANGOSPICE_LOOKUP_JWT_SECRET_KEY = SECRET_KEY
-```
-
-Algorithms can be configured:
-
-```python
-DJANGOSPICE_LOOKUP_JWT_ALGORITHMS = (
-    "HS256",
-)
-```
-
-The default user claim is:
-
-```python
-DJANGOSPICE_LOOKUP_JWT_USER_CLAIM = "user_id"
-```
-
-A custom user resolver can be supplied:
-
-```python
-DJANGOSPICE_LOOKUP_JWT_USER_RESOLVER = (
-    "myproject.authentication.resolve_user"
-)
-```
-
-The resolver is responsible for resolving the authenticated user represented by the configured JWT claim.
-
----
-
-## Widget Token Configuration
-
-The widget capability-token header can be configured:
-
-```python
-DJANGOSPICE_LOOKUP_WIDGET_TOKEN_HEADER = (
-    "X-Lookup-Token"
-)
-```
-
-The signing salt can be configured:
-
-```python
-DJANGOSPICE_LOOKUP_WIDGET_TOKEN_SALT = (
-    "djangospice_lookup.widget"
-)
-```
-
-The token lifetime is configurable in seconds:
-
-```python
-DJANGOSPICE_LOOKUP_WIDGET_TOKEN_MAX_AGE = 300
-```
-
-The default lifetime is five minutes.
-
----
-
-## Authentication Requirement
-
-Authentication is required by default:
-
-```python
-DJANGOSPICE_LOOKUP_REQUIRE_AUTHENTICATION = True
-```
-
-For applications that intentionally expose public lookup data:
-
-```python
-DJANGOSPICE_LOOKUP_REQUIRE_AUTHENTICATION = False
-```
-
-Only disable authentication when the lookup data is deliberately intended to be publicly accessible.
+Capability tokens provide short-lived access to a specific lookup.
 
 ---
 
@@ -754,7 +771,7 @@ Only disable authentication when the lookup data is deliberately intended to be 
 
 The package provides template tags for loading its frontend assets.
 
-First load the template tag library:
+Load the template tag library:
 
 ```django
 {% load djangospice_lookup %}
@@ -764,15 +781,15 @@ First load the template tag library:
 
 ## Load All Assets
 
-The simplest option is:
+The simplest approach is:
 
 ```django
 {% djangospice_lookup_assets %}
 ```
 
-This loads both the lookup stylesheet and JavaScript.
+This loads both the lookup CSS and JavaScript.
 
-A common base-template usage is:
+A base template can use:
 
 ```django
 {% load djangospice_lookup %}
@@ -790,8 +807,6 @@ A common base-template usage is:
 {% djangospice_lookup_css %}
 ```
 
-This renders the lookup stylesheet.
-
 ---
 
 ## Load JavaScript Only
@@ -800,13 +815,11 @@ This renders the lookup stylesheet.
 {% djangospice_lookup_js %}
 ```
 
-This renders the lookup JavaScript.
-
 ---
 
-## Separate CSS and JavaScript
+## Load Assets Separately
 
-Applications that prefer to control where assets are included can load them separately:
+Applications that need more control can load the assets independently:
 
 ```django
 {% load djangospice_lookup %}
@@ -830,7 +843,7 @@ The template tags use Django's static-files system to resolve the package assets
 
 # HTMX
 
-`LookupWidget` is designed to work with HTMX-driven interfaces.
+`LookupWidget` works with HTMX-driven interfaces.
 
 Lookup fields can be rendered inside:
 
@@ -842,180 +855,6 @@ Lookup fields can be rendered inside:
 * dynamically replaced form sections
 
 When HTMX replaces part of a page, newly rendered lookup widgets can be initialized as part of the HTMX lifecycle.
-
----
-
-# Using LookupWidget in a Filter Form
-
-A complete example using Django FilterSets might look like this:
-
-```python
-import django_filters
-
-from djangospice_lookup.widget import LookupWidget
-
-from .models import Author, Book
-
-
-class BookFilter(django_filters.FilterSet):
-    author = django_filters.ModelChoiceFilter(
-        label="Author",
-        queryset=Author.objects.all(),
-        widget=LookupWidget(
-            model=Author,
-            placeholder="Select an author",
-            search_placeholder="Search authors...",
-        ),
-    )
-
-    class Meta:
-        model = Book
-        fields = (
-            "author",
-        )
-```
-
-The template:
-
-```django
-{% load djangospice_lookup %}
-
-{% djangospice_lookup_assets %}
-
-<form method="get">
-    {{ filter.form.as_p }}
-
-    <button type="submit">
-        Apply filters
-    </button>
-</form>
-```
-
-This gives the user a searchable author filter without rendering the complete author queryset into the initial page.
-
----
-
-# Complete Example
-
-The following demonstrates a typical setup.
-
-## Model
-
-```python
-from django.db import models
-
-
-class Author(models.Model):
-    name = models.CharField(
-        max_length=200,
-    )
-
-    def __str__(self):
-        return self.name
-
-
-class Book(models.Model):
-    title = models.CharField(
-        max_length=200,
-    )
-
-    author = models.ForeignKey(
-        Author,
-        on_delete=models.CASCADE,
-    )
-
-    def __str__(self):
-        return self.title
-```
-
-## Lookup Registration
-
-```python
-from djangospice_lookup.registry import register_lookup
-
-from .models import Author, Book
-
-
-register_lookup(Author)
-register_lookup(Book)
-```
-
-## Filter
-
-```python
-import django_filters
-
-from djangospice_lookup.widget import LookupWidget
-
-from .models import Author, Book
-
-
-class BookFilter(django_filters.FilterSet):
-    author = django_filters.ModelChoiceFilter(
-        queryset=Author.objects.all(),
-        widget=LookupWidget(
-            model=Author,
-            placeholder="Select an author",
-            search_placeholder="Search authors...",
-        ),
-    )
-
-    class Meta:
-        model = Book
-        fields = (
-            "author",
-        )
-```
-
-## View
-
-```python
-from django.views.generic import ListView
-
-from .filters import BookFilter
-from .models import Book
-
-
-class BookListView(ListView):
-    model = Book
-    template_name = "library/book_list.html"
-
-    def get_queryset(self):
-        self.filter = BookFilter(
-            self.request.GET,
-            queryset=Book.objects.all(),
-        )
-
-        return self.filter.qs
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["filter"] = self.filter
-        return context
-```
-
-## Template
-
-```django
-{% load djangospice_lookup %}
-
-{% djangospice_lookup_assets %}
-
-<form method="get">
-    {{ filter.form.as_p }}
-
-    <button type="submit">
-        Filter
-    </button>
-</form>
-
-{% for book in object_list %}
-    <article>
-        <h2>{{ book.title }}</h2>
-        <p>{{ book.author }}</p>
-    </article>
-{% endfor %}
-```
 
 ---
 
@@ -1083,13 +922,146 @@ GET /lookup/library/book/?author=12
 
 ---
 
+# Complete Example
+
+The following example demonstrates a typical Django application using `LookupWidget` with `django-filter`.
+
+## Models
+
+```python
+from django.db import models
+
+
+class Author(models.Model):
+    name = models.CharField(
+        max_length=200,
+    )
+
+    def __str__(self):
+        return self.name
+
+
+class Book(models.Model):
+    title = models.CharField(
+        max_length=200,
+    )
+
+    author = models.ForeignKey(
+        Author,
+        on_delete=models.CASCADE,
+    )
+
+    def __str__(self):
+        return self.title
+```
+
+---
+
+## Lookup Registration
+
+```python
+from djangospice_lookup.registry import register_lookup
+
+from .models import Author, Book
+
+
+register_lookup(Author)
+register_lookup(Book)
+```
+
+---
+
+## Filter
+
+```python
+import django_filters
+
+from djangospice_lookup.widget import LookupWidget
+
+from .models import Author, Book
+
+
+class BookFilter(django_filters.FilterSet):
+    author = django_filters.ModelChoiceFilter(
+        label="Author",
+        queryset=Author.objects.all(),
+        widget=LookupWidget(
+            model=Author,
+            placeholder="Select an author",
+            search_placeholder="Search authors...",
+        ),
+    )
+
+    class Meta:
+        model = Book
+        fields = (
+            "author",
+        )
+```
+
+---
+
+## View
+
+```python
+from django.views.generic import ListView
+
+from .filters import BookFilter
+from .models import Book
+
+
+class BookListView(ListView):
+    model = Book
+    template_name = "library/book_list.html"
+
+    def get_queryset(self):
+        self.filter = BookFilter(
+            self.request.GET,
+            queryset=Book.objects.all(),
+        )
+
+        return self.filter.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filter"] = self.filter
+        return context
+```
+
+---
+
+## Template
+
+```django
+{% load djangospice_lookup %}
+
+{% djangospice_lookup_assets %}
+
+<form method="get">
+    {{ filter.form.as_p }}
+
+    <button type="submit">
+        Filter
+    </button>
+</form>
+
+{% for book in object_list %}
+    <article>
+        <h2>{{ book.title }}</h2>
+        <p>{{ book.author }}</p>
+    </article>
+{% endfor %}
+```
+
+---
+
 # Progressive Enhancement
 
-`LookupWidget` is built around Django's standard select widget.
+`LookupWidget` is built around Django's standard `<select>` widget.
 
 The underlying form control remains part of the HTML form.
 
-This means the widget works with Django's existing:
+This preserves Django's existing:
 
 * form fields
 * validation
@@ -1133,39 +1105,37 @@ For large or frequently changing datasets, `LookupWidget` provides a more scalab
 
 # Design Principles
 
-`djangospice_lookup` is intended to fit naturally into the Django ecosystem.
+`djangospice_lookup` is designed to fit naturally into the Django ecosystem.
 
-The package follows several principles:
-
-### Django Forms First
+## Django Forms First
 
 The lookup is a Django form widget rather than a replacement form system.
 
-### Server-Side Data
+## Server-Side Data
 
 Large querysets are searched and paginated on the server instead of being loaded entirely into the browser.
 
-### Standard Field Validation
+## Standard Field Validation
 
 Django form fields remain responsible for validating submitted values.
 
-### Explicit Exposure
+## Explicit Exposure
 
 Applications explicitly register the models they want to expose as lookups.
 
-### Configurable
+## Configurable
 
 Search, pagination, authentication, and widget behavior can be configured through Django settings.
 
-### Reusable
+## Reusable
 
-The same lookup widget can be used in ordinary Django forms and `django-filter` forms.
+The same `LookupWidget` can be used in ordinary Django forms and `django-filter` forms.
 
 ---
 
 # Summary
 
-A typical integration consists of four steps:
+A typical integration consists of:
 
 ### 1. Install
 
@@ -1173,7 +1143,35 @@ A typical integration consists of four steps:
 pip install djangospice-lookup
 ```
 
-### 2. Register
+### 2. Add the application
+
+```python
+INSTALLED_APPS = [
+    # ...
+    "djangospice_lookup",
+]
+```
+
+### 3. Configure middleware
+
+```python
+MIDDLEWARE = [
+    # ...
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "djangospice_lookup.middleware.LookupMiddleware",
+    # ...
+]
+```
+
+### 4. Include the URLs
+
+```python
+urlpatterns = [
+    path("", include("djangospice_lookup.urls")),
+]
+```
+
+### 5. Register the model
 
 ```python
 from djangospice_lookup.registry import register_lookup
@@ -1181,19 +1179,11 @@ from djangospice_lookup.registry import register_lookup
 register_lookup(Book)
 ```
 
-### 3. Use the widget
+### 6. Use `LookupWidget`
 
 ```python
 from djangospice_lookup.widget import LookupWidget
 
-widget = LookupWidget(
-    model=Book,
-)
-```
-
-Or use it directly in a Django field:
-
-```python
 book = forms.ModelChoiceField(
     queryset=Book.objects.all(),
     widget=LookupWidget(
@@ -1202,15 +1192,7 @@ book = forms.ModelChoiceField(
 )
 ```
 
-### 4. Load the assets
-
-```django
-{% load djangospice_lookup %}
-
-{% djangospice_lookup_assets %}
-```
-
-For `django-filter`, use the same widget directly on the filter field:
+### 7. Or use it with django-filter
 
 ```python
 author = django_filters.ModelChoiceFilter(
@@ -1221,10 +1203,27 @@ author = django_filters.ModelChoiceFilter(
 )
 ```
 
-This provides a consistent, server-side lookup experience across Django forms and filter forms.
+### 8. Load the assets
+
+```django
+{% load djangospice_lookup %}
+
+{% djangospice_lookup_assets %}
+```
+
+This provides a consistent server-side lookup experience across Django forms and `django-filter` forms.
 
 ---
 
+
 # License
 
-This project is licensed under the terms specified by the project.
+djangospice-lookup is licensed under the **MIT License**.
+
+See [LICENSE](LICENSE) for the full license text.
+
+---
+
+# Project
+
+[Djangospice API on GitHub](https://github.com/briansimpo/djangospice_api?utm_source=chatgpt.com)
