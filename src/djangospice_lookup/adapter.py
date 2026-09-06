@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from django.http import HttpRequest
 
 from .conf import LookupConfig, lookup_config
@@ -11,7 +9,6 @@ from .query import LookupQuery
 from .result import LookupResult
 from .security import LookupSecurityContext
 from .helpers import get_dependencies, positive_int
-
 
 
 
