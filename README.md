@@ -1,4 +1,4 @@
-# DjangoSpice Lookup
+# Djangospice Lookup
 
 A reusable Django lookup widget and server-side lookup endpoint for selecting objects from large datasets.
 
@@ -1221,9 +1221,3 @@ This provides a consistent server-side lookup experience across Django forms and
 djangospice-lookup is licensed under the **MIT License**.
 
 See [LICENSE](LICENSE) for the full license text.
-
----
-
-# Project
-
-[Djangospice API on GitHub](https://github.com/briansimpo/djangospice_api?utm_source=chatgpt.com)
