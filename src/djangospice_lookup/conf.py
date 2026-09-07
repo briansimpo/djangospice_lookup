@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-
 from django.conf import settings
-from django.utils.module_loading import import_string
+
+from .utils import algorithms, setting, non_empty_string, positive_int, resolve_callable
 
 
 # ---------------------------------------------------------------------------
@@ -69,116 +69,6 @@ class LookupConfig:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _setting(
-    name: str,
-    default: Any,
-) -> Any:
-    return getattr(
-        settings,
-        name,
-        default,
-    )
-
-
-def _resolve_callable(
-    value: Any,
-) -> Any | None:
-    if value is None:
-        return None
-
-    if isinstance(value, str):
-        value = import_string(value)
-
-    if not callable(value):
-        raise TypeError(
-            "Configured callable must be callable "
-            "or a dotted Python path."
-        )
-
-    return value
-
-
-def _positive_int(
-    name: str,
-    value: Any,
-) -> int:
-    try:
-        value = int(value)
-    except (TypeError, ValueError) as exc:
-        raise ValueError(
-            f"{name} must be a positive integer."
-        ) from exc
-
-    if value <= 0:
-        raise ValueError(
-            f"{name} must be a positive integer."
-        )
-
-    return value
-
-
-def _non_empty_string(
-    name: str,
-    value: Any,
-) -> str:
-    if not isinstance(value, str):
-        raise TypeError(
-            f"{name} must be a string."
-        )
-
-    value = value.strip()
-
-    if not value:
-        raise ValueError(
-            f"{name} cannot be empty."
-        )
-
-    return value
-
-
-def _algorithms(
-    value: Any,
-) -> tuple[str, ...]:
-    if isinstance(value, str):
-        value = (value,)
-
-    try:
-        value = tuple(value)
-    except TypeError as exc:
-        raise TypeError(
-            "DJANGOSPICE_LOOKUP_JWT_ALGORITHMS "
-            "must be an iterable of strings."
-        ) from exc
-
-    if not value:
-        raise ValueError(
-            "At least one JWT algorithm must be configured."
-        )
-
-    result: list[str] = []
-
-    for algorithm in value:
-        if not isinstance(algorithm, str):
-            raise TypeError(
-                "JWT algorithms must be strings."
-            )
-
-        algorithm = algorithm.strip()
-
-        if not algorithm:
-            raise ValueError(
-                "JWT algorithms cannot contain empty values."
-            )
-
-        result.append(algorithm)
-
-    return tuple(result)
-
-
-# ---------------------------------------------------------------------------
 # Resolver
 # ---------------------------------------------------------------------------
 
@@ -193,49 +83,49 @@ def get_lookup_config() -> LookupConfig:
         package default
     """
 
-    search_param = _non_empty_string(
+    search_param = non_empty_string(
         "DJANGOSPICE_LOOKUP_SEARCH_PARAM",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_SEARCH_PARAM",
             DEFAULT_SEARCH_PARAM,
         ),
     )
 
-    page_param = _non_empty_string(
+    page_param = non_empty_string(
         "DJANGOSPICE_LOOKUP_PAGE_PARAM",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_PAGE_PARAM",
             DEFAULT_PAGE_PARAM,
         ),
     )
 
-    page_size_param = _non_empty_string(
+    page_size_param = non_empty_string(
         "DJANGOSPICE_LOOKUP_PAGE_SIZE_PARAM",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_PAGE_SIZE_PARAM",
             DEFAULT_PAGE_SIZE_PARAM,
         ),
     )
 
-    page = _positive_int(
+    page = positive_int(
         "DJANGOSPICE_LOOKUP_PAGE",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_PAGE",
             DEFAULT_PAGE,
         ),
     )
 
-    page_size = _positive_int(
+    page_size = positive_int(
         "DJANGOSPICE_LOOKUP_PAGE_SIZE",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_PAGE_SIZE",
             DEFAULT_PAGE_SIZE,
         ),
     )
 
-    max_page_size = _positive_int(
+    max_page_size = positive_int(
         "DJANGOSPICE_LOOKUP_MAX_PAGE_SIZE",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_MAX_PAGE_SIZE",
             DEFAULT_MAX_PAGE_SIZE,
         ),
@@ -247,62 +137,62 @@ def get_lookup_config() -> LookupConfig:
             "greater than DJANGOSPICE_LOOKUP_MAX_PAGE_SIZE."
         )
 
-    jwt_secret_key = _non_empty_string(
+    jwt_secret_key = non_empty_string(
         "DJANGOSPICE_LOOKUP_JWT_SECRET_KEY",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_JWT_SECRET_KEY",
             settings.SECRET_KEY,
         ),
     )
 
-    jwt_algorithms = _algorithms(
-        _setting(
+    jwt_algorithms = algorithms(
+        setting(
             "DJANGOSPICE_LOOKUP_JWT_ALGORITHMS",
             DEFAULT_JWT_ALGORITHMS,
         ),
     )
 
-    jwt_user_claim = _non_empty_string(
+    jwt_user_claim = non_empty_string(
         "DJANGOSPICE_LOOKUP_JWT_USER_CLAIM",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_JWT_USER_CLAIM",
             DEFAULT_JWT_USER_CLAIM,
         ),
     )
 
-    jwt_user_resolver = _resolve_callable(
-        _setting(
+    jwt_user_resolver = resolve_callable(
+        setting(
             "DJANGOSPICE_LOOKUP_JWT_USER_RESOLVER",
             None,
         ),
     )
 
-    widget_token_header = _non_empty_string(
+    widget_token_header = non_empty_string(
         "DJANGOSPICE_LOOKUP_WIDGET_TOKEN_HEADER",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_WIDGET_TOKEN_HEADER",
             DEFAULT_WIDGET_TOKEN_HEADER,
         ),
     )
 
-    widget_token_salt = _non_empty_string(
+    widget_token_salt = non_empty_string(
         "DJANGOSPICE_LOOKUP_WIDGET_TOKEN_SALT",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_WIDGET_TOKEN_SALT",
             DEFAULT_WIDGET_TOKEN_SALT,
         ),
     )
 
-    widget_token_max_age = _positive_int(
+    widget_token_max_age = positive_int(
         "DJANGOSPICE_LOOKUP_WIDGET_TOKEN_MAX_AGE",
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_WIDGET_TOKEN_MAX_AGE",
             DEFAULT_WIDGET_TOKEN_MAX_AGE,
         ),
     )
 
     require_authentication = bool(
-        _setting(
+        setting(
             "DJANGOSPICE_LOOKUP_REQUIRE_AUTHENTICATION",
             DEFAULT_REQUIRE_AUTHENTICATION,
         ),
