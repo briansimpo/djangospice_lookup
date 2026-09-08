@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "djangospice-lookup"
-version = "0.2.0"
+version = "0.3.0"
 
 description = "Reusable lookup widgets and server-side lookup utilities for Django."
 
@@ -21,15 +21,13 @@ authors = [
 
 keywords = [
     "django",
-    "django-lookup",
-    "django-filter",
-    "django-widget",
     "lookup",
     "autocomplete",
     "search",
     "pagination",
     "htmx",
     "djangospice",
+    "djangospice-lookup",
 ]
 
 
