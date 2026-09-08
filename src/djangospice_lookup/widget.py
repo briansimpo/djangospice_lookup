@@ -287,32 +287,34 @@ class LookupWidget(forms.Select):
     # Lookup metadata
     # ------------------------------------------------------------------
 
-    def get_lookup_dependencies(
-        self,
-    ) -> tuple[str, ...]:
+    def get_lookup_dependencies(self) -> tuple[str, ...]:
         return tuple(
             dependency.path
             for dependency in self.dependencies
         )
 
-    def get_multi_select(
-        self,
-        context: dict[str, Any],
-    ) -> bool:
-        if self.multi_select is not None:
-            return self.multi_select
+    def get_client_config(self, *, name: str) -> dict[str, Any]:
+        """
+        Return the client-side configuration for this lookup widget.
+        """
+        if multi_select is None:
+            multi_select = self.multi_select
 
-        attrs = context.get(
-            "widget",
-            {},
-        ).get(
-            "attrs",
-            {},
-        )
-
-        return bool(
-            attrs.get("multiple")
-        )
+        return {
+            "type": "lookup",
+            "name": name,
+            "url": self.lookup_url,
+            "search_param": self.config.search_param,
+            "page_param": self.config.page_param,
+            "page_size_param": self.config.page_size_param,
+            "page_size": self.page_size,
+            "min_search_length": self.min_search_length,
+            "placeholder": self.placeholder,
+            "search_placeholder": self.search_placeholder,
+            "allow_clear": self.allow_clear,
+            "multi_select": self.multi_select,
+            "dependencies": self.get_lookup_dependencies(),
+        }
 
     # ------------------------------------------------------------------
     # HTML attributes
@@ -406,21 +408,13 @@ class LookupWidget(forms.Select):
         widget["lookup"] = {
             "url": self.lookup_url,
             "dependencies": self.dependencies,
-            "dependency_paths": (
-                self.get_lookup_dependencies()
-            ),
+            "dependency_paths": self.get_lookup_dependencies(),
             "placeholder": self.placeholder,
-            "search_placeholder": (
-                self.search_placeholder
-            ),
+            "search_placeholder": self.search_placeholder,
             "page_size": self.page_size,
-            "min_search_length": (
-                self.min_search_length
-            ),
+            "min_search_length": self.min_search_length,
             "allow_clear": self.allow_clear,
-            "multi_select": self.get_multi_select(
-                context,
-            ),
+            "multi_select": self.multi_select,
         }
 
         return context
