@@ -2,7 +2,7 @@
 
 A reusable Django lookup widget and server-side lookup endpoint for selecting objects from large datasets.
 
-`djangospice_lookup` provides an enhanced lookup experience for Django forms and `django-filter` while preserving Django's standard form and field behavior.
+`djangospice-lookup` provides an enhanced lookup experience for Django forms and `django-filter` while preserving Django's standard form and field behavior.
 
 It supports server-side search, pagination, filtering, dependent lookups, multiple selection, authentication, access scoping, and HTMX-driven interfaces.
 
@@ -80,7 +80,7 @@ INSTALLED_APPS = [
 
 # Configuration
 
-`djangospice_lookup` uses Django settings for package-wide configuration.
+`djangospice-lookup` uses Django settings for package-wide configuration.
 
 All package settings use the `DJANGOSPICE_LOOKUP_` prefix.
 
@@ -1074,7 +1074,7 @@ The lookup interface enhances the field when the package assets are loaded.
 
 # Recommended Usage
 
-`djangospice_lookup` is particularly useful when a form or filter needs to select from a large queryset.
+`djangospice-lookup` is particularly useful when a form or filter needs to select from a large queryset.
 
 For small static choice sets, a normal Django `ChoiceField` or `ModelChoiceField` may be sufficient.
 
