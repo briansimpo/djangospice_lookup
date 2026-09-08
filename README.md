@@ -1,4 +1,4 @@
-# Djangospice Lookup
+# djangospice-lookup
 
 A reusable Django lookup widget and server-side lookup endpoint for selecting objects from large datasets.
 
