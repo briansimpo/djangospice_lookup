@@ -7,8 +7,8 @@ from djangospice_lookup.apps import namespace
 register = template.Library()
 
 
-LOOKUP_CSS = f"{namespace}/lookup.css"
-LOOKUP_JS = f"{namespace}/lookup.js"
+LOOKUP_CSS = f"{namespace}/css/lookup.css"
+LOOKUP_JS = f"{namespace}/js/lookup.js"
 
 
 def _lookup_css() -> str:
